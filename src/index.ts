@@ -1,7 +1,7 @@
 import { AxiosInstance } from "axios";
 import { createHttpClient } from "./client/httpClient";
 import { env } from "./config/env";
-import { resolveSite, SiteConfig } from "./config/sites";
+import { resolveSite, ScraperConfig } from "./config/sites";
 import { initSession, JsfSession } from "./scrapers/jsfSession";
 import { executeSearch, navigateToPage, SearchFilters } from "./scrapers/searchScraper";
 import { downloadPdf, ensureDownloadDir } from "./downloaders/pdfDownloader";
@@ -18,19 +18,18 @@ import {
   ScraperProgress,
 } from "./storage/stateManager";
 
-// CLI args
-// --site=tfa|dfsai     Sitio objetivo (fallback a TARGET_SITE del .env)
-// --pages=N            Limitar a N páginas (demo). Sin este flag: corre completo
-// --skip-pdfs          Solo extraer metadata, no descargar PDFs
-function parseArgs() {
+// CLI: --site=tfa|dfsai, --pages=N, --skip-pdfs
+function parseArgs(): ScraperConfig {
   const argv = process.argv;
   const get = (prefix: string) =>
     argv.find((a) => a.startsWith(prefix))?.split("=")[1];
 
+  const siteKey = get("--site=") ?? env.targetSite;
   const pagesRaw = get("--pages=");
+
   return {
-    siteKey: get("--site=") ?? env.targetSite,
-    maxPages: pagesRaw ? parseInt(pagesRaw, 10) : null, // null = sin límite
+    site: resolveSite(siteKey),        // lanza si el site es desconocido
+    maxPages: pagesRaw ? parseInt(pagesRaw, 10) : null,
     skipPdfs: argv.includes("--skip-pdfs"),
   };
 }
@@ -38,53 +37,46 @@ function parseArgs() {
 const FILTERS: SearchFilters = {};
 
 async function main(): Promise<void> {
-  const { siteKey, maxPages, skipPdfs } = parseArgs();
-  const site = resolveSite(siteKey);
+  const config = parseArgs();
 
   ensureDataDir();
   ensureDownloadDir();
 
-  const client = createHttpClient();
+  if (config.maxPages !== null) {
+    console.log(`[INFO] Modo demo: máximo ${config.maxPages} página(s)`);
+  }
+  if (config.skipPdfs) {
+    console.log("[INFO] --skip-pdfs: solo extracción de metadata");
+  }
 
-  const existingProgress = loadProgress(siteKey);
+  const client = createHttpClient();
+  const existingProgress = loadProgress(config.site.key);
 
   if (existingProgress && existingProgress.lastCompletedPage >= existingProgress.totalPages) {
-    console.log(`\n[INFO] Scraping de ${site.label} ya completado.`);
-    const session = await initSession(client, site);
-    await retryFailedDownloads(client, session, site);
+    console.log(`\n[INFO] Scraping de ${config.site.label} ya completado.`);
+    const session = await initSession(client, config.site);
+    await retryFailedDownloads(client, session, config);
     printSummary(existingProgress);
     return;
   }
 
-  if (maxPages !== null) {
-    console.log(`[INFO] Modo demo: máximo ${maxPages} página(s)`);
-  }
-  if (skipPdfs) {
-    console.log("[INFO] --skip-pdfs: solo extracción de metadata");
-  }
-
   if (existingProgress) {
-    await runScraper(client, site, siteKey, existingProgress, existingProgress.lastCompletedPage + 1, maxPages, skipPdfs);
+    await runScraper(client, config, existingProgress, existingProgress.lastCompletedPage + 1);
   } else {
-    await runFreshScraper(client, site, siteKey, maxPages, skipPdfs);
+    await initAndRun(client, config);
   }
 }
 
-async function runFreshScraper(
-  client: AxiosInstance,
-  site: SiteConfig,
-  siteKey: string,
-  maxPages: number | null,
-  skipPdfs: boolean
-): Promise<void> {
-  console.log(`\n[INICIO] Site: ${site.label}`);
-  let session = await initSession(client, site);
+// Inicio limpio: establece el estado inicial del job y delega en runScraper.
+async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise<void> {
+  console.log(`\n[INICIO] Site: ${config.site.label}`);
+  let session = await initSession(client, config.site);
 
   console.log("[SEARCH] Ejecutando búsqueda inicial...");
-  const searchResult = await executeSearch(client, session, site, FILTERS);
+  const searchResult = await executeSearch(client, session, config.site, FILTERS);
 
   if (!searchResult) {
-    console.error(`[ERROR] Búsqueda fallida en ${site.label}.`);
+    console.error(`[ERROR] Búsqueda fallida en ${config.site.label}.`);
     process.exit(1);
   }
 
@@ -92,13 +84,13 @@ async function runFreshScraper(
   const { page: firstPage } = searchResult;
 
   if (firstPage.totalRecords === 0) {
-    console.warn(`[WARN] 0 registros encontrados en ${site.label}.`);
+    console.warn(`[WARN] 0 registros encontrados en ${config.site.label}.`);
     console.warn("       Verificar conectividad y acceso al sitio desde esta IP.");
     process.exit(0);
   }
 
   const progress: ScraperProgress = {
-    site: siteKey,
+    site: config.site.key,
     lastCompletedPage: 0,
     totalPages: firstPage.totalPages,
     totalRecords: firstPage.totalRecords,
@@ -106,75 +98,75 @@ async function runFreshScraper(
     updatedAt: new Date().toISOString(),
   };
 
-  // Descargar Excel con todos los registros del resultado (una sola vez tras el search)
-  if (!skipPdfs) {
-    await downloadExcel(client, session, site);
+  if (!config.skipPdfs) {
+    await downloadExcel(client, session, config.site);
   }
 
-  // Procesar página 1 (ya la tenemos del search)
-  await processPage(client, session, site, firstPage.records, skipPdfs);
+  // Página 1 ya disponible del search — no hace falta paginación extra
+  await processPage(client, session, config, firstPage.records);
   progress.lastCompletedPage = 1;
   saveProgress(progress);
 
-  if (maxPages === 1) {
+  if (config.maxPages === 1) {
     printSummary(progress);
     console.log("\n[DONE] Límite de páginas alcanzado.");
     return;
   }
 
-  await runScraper(client, site, siteKey, progress, 2, maxPages, skipPdfs);
+  await runScraper(client, config, progress, 2);
 }
 
-// Loop de paginación a partir de startPage. Carga su propia sesión.
+// Loop de paginación desde startPage. Siempre re-establece sesión JSF al iniciar.
 async function runScraper(
   client: AxiosInstance,
-  site: SiteConfig,
-  siteKey: string,
+  config: ScraperConfig,
   progress: ScraperProgress,
-  startPage: number,
-  maxPages: number | null,
-  skipPdfs: boolean
+  startPage: number
 ): Promise<void> {
-  console.log(`\n[RESUME] Site: ${site.label} — retomando desde página ${startPage}/${progress.totalPages}`);
+  console.log(
+    `\n[RESUME] Site: ${config.site.label} — retomando desde página ${startPage}/${progress.totalPages}`
+  );
 
-  let session = await initSession(client, site);
+  let session = await initSession(client, config.site);
 
-  // executeSearch necesario para establecer el estado de sesión JSF antes de paginar
+  // executeSearch re-establece el ViewState JSF necesario para paginar
   console.log("[SEARCH] Re-estableciendo estado de sesión...");
-  const searchResult = await executeSearch(client, session, site, FILTERS);
+  const searchResult = await executeSearch(client, session, config.site, FILTERS);
   if (!searchResult || searchResult.page.totalRecords === 0) {
     console.error("[ERROR] No se pudo re-establecer sesión para paginar.");
     process.exit(1);
   }
   session = searchResult.session;
 
-  // Excel: idempotente (excelDownloader skipea si ya existe en disco)
-  if (!skipPdfs) {
-    await downloadExcel(client, session, site);
+  // Excel idempotente: skipea si ya existe en disco
+  if (!config.skipPdfs) {
+    await downloadExcel(client, session, config.site);
   }
 
-  // maxPages limita el total de páginas procesadas en esta ejecución
-  const lastPage = maxPages !== null
-    ? Math.min(progress.totalPages, maxPages)
-    : progress.totalPages;
+  const lastPage =
+    config.maxPages !== null
+      ? Math.min(progress.totalPages, config.maxPages)
+      : progress.totalPages;
 
   for (let pageNum = startPage; pageNum <= lastPage; pageNum++) {
-    console.log(`\n[PAGE] ${pageNum}/${progress.totalPages}${maxPages ? ` (demo: hasta ${lastPage})` : ""}`);
+    console.log(
+      `\n[PAGE] ${pageNum}/${progress.totalPages}${config.maxPages ? ` (demo: hasta ${lastPage})` : ""}`
+    );
 
     let navResult = await navigateToPage(
-      client, session, site, pageNum,
+      client, session, config.site, pageNum,
       progress.totalPages, progress.totalRecords, FILTERS
     );
 
-    // Página vacía inesperada = ViewState expirado → re-inicializar y reintentar una vez
+    // Página vacía = ViewState expirado → re-inicializar sesión y reintentar una vez
     if (!navResult || navResult.page.records.length === 0) {
       console.warn(`[WARN] Página ${pageNum} vacía — re-inicializando sesión...`);
-      session = await initSession(client, site);
-      const retry = await executeSearch(client, session, site, FILTERS);
+      session = await initSession(client, config.site);
+      const retry = await executeSearch(client, session, config.site, FILTERS);
       if (retry) session = retry.session;
 
       navResult = await navigateToPage(
-        client, session, site, pageNum,
+        client, session, config.site, pageNum,
         progress.totalPages, progress.totalRecords, FILTERS
       );
 
@@ -186,37 +178,41 @@ async function runScraper(
     }
 
     session = navResult.session;
-    await processPage(client, session, site, navResult.page.records, skipPdfs);
+    await processPage(client, session, config, navResult.page.records);
     progress.lastCompletedPage = pageNum;
     saveProgress(progress); // atomic write — seguro ante kill/crash
   }
 
   printSummary(progress);
-  if (maxPages !== null && progress.lastCompletedPage < progress.totalPages) {
-    console.log(`\n[DONE] Límite --pages=${maxPages} alcanzado. Quedan ${progress.totalPages - progress.lastCompletedPage} páginas.`);
+  if (config.maxPages !== null && progress.lastCompletedPage < progress.totalPages) {
+    console.log(
+      `\n[DONE] Límite --pages=${config.maxPages} alcanzado. Quedan ${progress.totalPages - progress.lastCompletedPage} páginas.`
+    );
     console.log("       Para continuar: pnpm start:tfa  (retoma desde aquí automáticamente)");
   } else {
     console.log("\n[DONE] Scraping completado.");
   }
 }
 
+// Persiste los registros y descarga los PDFs asociados.
+// appendRecords ANTES de downloadPdf garantiza que la metadata nunca se pierde
+// aunque los PDFs fallen individualmente.
 async function processPage(
   client: AxiosInstance,
   session: JsfSession,
-  site: SiteConfig,
-  records: DocumentRecord[],
-  skipPdfs: boolean
+  config: ScraperConfig,
+  records: DocumentRecord[]
 ): Promise<void> {
-  appendRecords(records); // atomic write antes de descargar PDFs
+  appendRecords(records);
 
-  if (skipPdfs) return;
+  if (config.skipPdfs) return;
 
   for (const record of records) {
     if (record.pdfParamUuid === null) {
       console.log(`  [SKIP] Sin PDF: ${record.nroResolucion || record.nro}`);
       continue;
     }
-    const result = await downloadPdf(client, session, site, record);
+    const result = await downloadPdf(client, session, config.site, record);
     if (!result.success) {
       recordFailedDownload(record, result.error ?? "Error desconocido");
     }
@@ -226,7 +222,7 @@ async function processPage(
 async function retryFailedDownloads(
   client: AxiosInstance,
   session: JsfSession,
-  site: SiteConfig
+  config: ScraperConfig
 ): Promise<void> {
   const failed = loadFailedDownloads();
   if (failed.length === 0) {
@@ -235,7 +231,7 @@ async function retryFailedDownloads(
   }
   console.log(`\n[RETRY] Reintentando ${failed.length} descargas fallidas...`);
   for (const { record } of failed) {
-    const result = await downloadPdf(client, session, site, record);
+    const result = await downloadPdf(client, session, config.site, record);
     if (!result.success) {
       console.warn(`  [FAIL] Sigue fallando: ${record.nroResolucion}`);
     }

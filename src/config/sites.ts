@@ -22,6 +22,14 @@ export const SITES = {
 
 export type SiteKey = keyof typeof SITES;
 
+// Configuración inmutable de una ejecución del scraper.
+// Agrupa los flags de ejecución junto al sitio para evitar prop-drilling.
+export interface ScraperConfig {
+  readonly site: SiteConfig;
+  readonly maxPages: number | null; // null = sin límite
+  readonly skipPdfs: boolean;
+}
+
 export function resolveSite(key: string): SiteConfig {
   if (!(key in SITES)) {
     const valid = Object.keys(SITES).join(", ");
