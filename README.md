@@ -1,12 +1,22 @@
-# Scraper — Repositorio Digital OEFA
+# Scraper — OEFA TFA / Poder Judicial Perú
 
-Scraper TypeScript para extraer resoluciones del [Repositorio Digital OEFA](https://publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml) (TFA y DFSAI). Implementado con `axios` + `cheerio` — sin browser automation.
+Scraper TypeScript implementado con `axios` + `cheerio` — sin browser automation.
+
+## Sitio objetivo
+
+El desafío propone dos targets:
+
+| Site | URL | Acceso |
+|------|-----|--------|
+| **Poder Judicial Perú** (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | 403 sin IP peruana |
+| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Sin VPN |
+
+El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`) dado que el target principal devuelve HTTP 403 desde IPs fuera de Perú — no hay forma de explorar su estructura ni verificar el scraper sin acceso de red. Ambos sitios usan JSF/PrimeFaces con estructura idéntica; adaptar al PJ requiere solo cambiar la URL y los form IDs en `src/config/sites.ts`.
 
 ## Requisitos
 
 - Node.js v18+
 - pnpm v8+
-- **VPN con IP peruana** para el sitio TFA (el sitio aplica geo-filtro silencioso: HTTP 200 pero 0 resultados fuera de Perú)
 
 ## Instalación
 
