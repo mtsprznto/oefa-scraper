@@ -75,14 +75,15 @@ async function main(): Promise<void> {
     return;
   }
 
-  // --start-page fuerza inicio desde una página específica, ignorando el checkpoint
+  // --start-page fuerza inicio desde una página específica
+  // Con checkpoint: usa los totales guardados. Sin checkpoint: hace executeSearch para obtenerlos.
   if (config.startPage !== undefined) {
     if (existingProgress) {
-      log.info("--start-page override: ignorando checkpoint", { startPage: config.startPage });
+      log.info("--start-page override: usando checkpoint existente", { startPage: config.startPage });
       await runScraper(client, config, existingProgress, config.startPage);
     } else {
-      log.warn("--start-page requiere un checkpoint previo; iniciando desde página 1");
-      await initAndRun(client, config);
+      log.info("--start-page sin checkpoint: obteniendo totales del sitio", { startPage: config.startPage });
+      await initAtPage(client, config);
     }
   } else if (existingProgress) {
     await runScraper(client, config, existingProgress, existingProgress.lastCompletedPage + 1);
@@ -147,6 +148,53 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
   }
 
   await runScraper(client, config, progress, 2);
+}
+
+// Obtiene los totales del sitio y salta directamente a config.startPage.
+// Usado cuando se da --start-page sin haber corrido antes (sin checkpoint).
+async function initAtPage(client: AxiosInstance, config: ScraperConfig): Promise<void> {
+  const sid = config.sessionId;
+  const startPage = config.startPage!;
+
+  log.info("Iniciando scraper en página específica", {
+    site: config.site.key,
+    startPage,
+    ...(sid ? { session: sid } : {}),
+  });
+
+  let session = await initSession(client, config.site);
+  const searchResult = await executeSearch(client, session, config.site, FILTERS, config.delayMultiplier);
+
+  if (!searchResult || searchResult.page.totalRecords === 0) {
+    log.error("No se pudo obtener totales del sitio para --start-page");
+    process.exit(1);
+  }
+
+  session = searchResult.session;
+  const { page: firstPage } = searchResult;
+
+  log.info("Totales obtenidos, saltando a página", {
+    totalRecords: firstPage.totalRecords,
+    totalPages: firstPage.totalPages,
+    startPage,
+  });
+
+  // Crear progress con lastCompletedPage = startPage - 1 para que runScraper arranque en startPage
+  const progress: ScraperProgress = {
+    site: config.site.key,
+    lastCompletedPage: startPage - 1,
+    totalPages: firstPage.totalPages,
+    totalRecords: firstPage.totalRecords,
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  saveProgress(progress, sid);
+
+  if (!config.skipPdfs) {
+    await downloadExcel(client, session, config.site, undefined, config.delayMultiplier);
+  }
+
+  await runScraper(client, config, progress, startPage);
 }
 
 // Loop de paginación desde startPage. Siempre re-establece sesión JSF al iniciar.

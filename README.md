@@ -99,9 +99,7 @@ Dividir el scraping entre múltiples terminales requiere dos cosas:
 pnpm start --site=tfa --session=worker-1 --pages=88 --delay-multiplier=1.5
 
 # Terminal 2 — páginas 89-176
-# Nota: --start-page requiere un checkpoint previo en esa sesión.
-# La primera vez worker-2 arranca desde página 1 y construye su propio checkpoint.
-# Para forzar el rango exacto, correr primero unas páginas sin --start-page.
+# Sin checkpoint previo: hace executeSearch para obtener los totales y salta directo a página 89.
 pnpm start --site=tfa --session=worker-2 --start-page=89 --delay-multiplier=1.5
 ```
 
