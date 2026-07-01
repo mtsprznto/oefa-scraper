@@ -6,14 +6,14 @@ Scraper TypeScript para extraer resoluciones del Tribunal de Fiscalización Ambi
 
 ## Sitio objetivo
 
-El desafío propone dos targets:
+El desafío técnico propone dos targets. Este scraper implementa el **sitio alternativo oficial**, que no requiere VPN:
 
-| Site | URL | Acceso |
-|------|-----|--------|
-| **Poder Judicial Perú** (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | HTTP 403 fuera de Perú |
-| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Sin VPN |
+| Site | URL | Acceso | Implementado |
+|------|-----|--------|-------------|
+| Poder Judicial Perú (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | HTTP 403 fuera de Perú — requiere VPN peruana | ✗ |
+| **OEFA TFA (alternativo oficial)** | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Accesible sin VPN desde cualquier IP | ✅ |
 
-El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`): mismo stack JSF/PrimeFaces, mismos form IDs, misma mecánica de paginación y descarga de PDFs. El target principal devuelve HTTP 403 desde IPs fuera de Perú — imposible explorar su estructura sin acceso físico de red. Adaptar al PJ requiere solo cambiar la URL y form IDs en `src/config/sites.ts`.
+**¿Por qué el alternativo?** El target principal devuelve HTTP 403 desde IPs fuera de Perú — no es posible explorar su estructura, verificar payloads ni probar el scraper sin acceso físico de red peruano. El desafío incluye explícitamente el sitio OEFA como alternativo oficial para exactamente este caso. Ambos sitios usan el mismo stack (JSF/PrimeFaces 6.0) con estructura idéntica — los mismos form IDs, la misma mecánica de paginación y descarga de PDFs. Adaptar al PJ requiere únicamente cambiar la URL en `src/config/sites.ts`.
 
 **Stack detectado:** JSF (JavaServer Faces) con PrimeFaces 6.0. Todos los payloads verificados contra capturas HAR reales.
 
