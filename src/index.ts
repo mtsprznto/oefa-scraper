@@ -17,6 +17,7 @@ import {
   printSummary,
   ScraperProgress,
 } from "./storage/stateManager";
+import { log } from "./logger";
 
 // CLI: --site=tfa|dfsai, --pages=N, --skip-pdfs
 function parseArgs(): ScraperConfig {
@@ -28,7 +29,7 @@ function parseArgs(): ScraperConfig {
   const pagesRaw = get("--pages=");
 
   return {
-    site: resolveSite(siteKey),        // lanza si el site es desconocido
+    site: resolveSite(siteKey),
     maxPages: pagesRaw ? parseInt(pagesRaw, 10) : null,
     skipPdfs: argv.includes("--skip-pdfs"),
   };
@@ -43,20 +44,21 @@ async function main(): Promise<void> {
   ensureDownloadDir();
 
   if (config.maxPages !== null) {
-    console.log(`[INFO] Modo demo: máximo ${config.maxPages} página(s)`);
+    log.info("Modo demo", { maxPages: config.maxPages });
   }
   if (config.skipPdfs) {
-    console.log("[INFO] --skip-pdfs: solo extracción de metadata");
+    log.info("--skip-pdfs activo: solo extracción de metadata");
   }
 
   const client = createHttpClient();
   const existingProgress = loadProgress(config.site.key);
 
   if (existingProgress && existingProgress.lastCompletedPage >= existingProgress.totalPages) {
-    console.log(`\n[INFO] Scraping de ${config.site.label} ya completado.`);
+    log.info("Scraping ya completado", { site: config.site.key });
     const session = await initSession(client, config.site);
     await retryFailedDownloads(client, session, config);
     printSummary(existingProgress);
+    log.close();
     return;
   }
 
@@ -65,18 +67,20 @@ async function main(): Promise<void> {
   } else {
     await initAndRun(client, config);
   }
+
+  log.close();
 }
 
 // Inicio limpio: establece el estado inicial del job y delega en runScraper.
 async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise<void> {
-  console.log(`\n[INICIO] Site: ${config.site.label}`);
+  log.info("Iniciando scraper", { site: config.site.key });
   let session = await initSession(client, config.site);
 
-  console.log("[SEARCH] Ejecutando búsqueda inicial...");
+  log.info("Ejecutando búsqueda inicial");
   const searchResult = await executeSearch(client, session, config.site, FILTERS);
 
   if (!searchResult) {
-    console.error(`[ERROR] Búsqueda fallida en ${config.site.label}.`);
+    log.error("Búsqueda fallida", { site: config.site.label });
     process.exit(1);
   }
 
@@ -84,10 +88,16 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
   const { page: firstPage } = searchResult;
 
   if (firstPage.totalRecords === 0) {
-    console.warn(`[WARN] 0 registros encontrados en ${config.site.label}.`);
-    console.warn("       Verificar conectividad y acceso al sitio desde esta IP.");
+    log.warn("0 registros encontrados — verificar conectividad y acceso al sitio", {
+      site: config.site.label,
+    });
     process.exit(0);
   }
+
+  log.info("Totales obtenidos", {
+    totalRecords: firstPage.totalRecords,
+    totalPages: firstPage.totalPages,
+  });
 
   const progress: ScraperProgress = {
     site: config.site.key,
@@ -102,14 +112,13 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
     await downloadExcel(client, session, config.site);
   }
 
-  // Página 1 ya disponible del search — no hace falta paginación extra
-  await processPage(client, session, config, firstPage.records);
+  await processPage(client, session, config, firstPage.records, 1, firstPage.totalPages);
   progress.lastCompletedPage = 1;
   saveProgress(progress);
 
   if (config.maxPages === 1) {
     printSummary(progress);
-    console.log("\n[DONE] Límite de páginas alcanzado.");
+    log.info("Límite de páginas alcanzado", { maxPages: config.maxPages });
     return;
   }
 
@@ -123,22 +132,22 @@ async function runScraper(
   progress: ScraperProgress,
   startPage: number
 ): Promise<void> {
-  console.log(
-    `\n[RESUME] Site: ${config.site.label} — retomando desde página ${startPage}/${progress.totalPages}`
-  );
+  log.info("Retomando scraper", {
+    site: config.site.key,
+    startPage,
+    totalPages: progress.totalPages,
+  });
 
   let session = await initSession(client, config.site);
 
-  // executeSearch re-establece el ViewState JSF necesario para paginar
-  console.log("[SEARCH] Re-estableciendo estado de sesión...");
+  log.info("Re-estableciendo estado de sesión JSF");
   const searchResult = await executeSearch(client, session, config.site, FILTERS);
   if (!searchResult || searchResult.page.totalRecords === 0) {
-    console.error("[ERROR] No se pudo re-establecer sesión para paginar.");
+    log.error("No se pudo re-establecer sesión para paginar");
     process.exit(1);
   }
   session = searchResult.session;
 
-  // Excel idempotente: skipea si ya existe en disco
   if (!config.skipPdfs) {
     await downloadExcel(client, session, config.site);
   }
@@ -149,9 +158,11 @@ async function runScraper(
       : progress.totalPages;
 
   for (let pageNum = startPage; pageNum <= lastPage; pageNum++) {
-    console.log(
-      `\n[PAGE] ${pageNum}/${progress.totalPages}${config.maxPages ? ` (demo: hasta ${lastPage})` : ""}`
-    );
+    log.info("Navegando a página", {
+      page: pageNum,
+      totalPages: progress.totalPages,
+      ...(config.maxPages ? { demoLimit: lastPage } : {}),
+    });
 
     let navResult = await navigateToPage(
       client, session, config.site, pageNum,
@@ -160,7 +171,7 @@ async function runScraper(
 
     // Página vacía = ViewState expirado → re-inicializar sesión y reintentar una vez
     if (!navResult || navResult.page.records.length === 0) {
-      console.warn(`[WARN] Página ${pageNum} vacía — re-inicializando sesión...`);
+      log.warn("Página vacía — re-inicializando sesión", { page: pageNum });
       session = await initSession(client, config.site);
       const retry = await executeSearch(client, session, config.site, FILTERS);
       if (retry) session = retry.session;
@@ -171,26 +182,26 @@ async function runScraper(
       );
 
       if (!navResult || navResult.page.records.length === 0) {
-        console.error(`[ERROR] Página ${pageNum} sigue vacía tras re-inicialización.`);
+        log.error("Página sigue vacía tras re-inicialización", { page: pageNum });
         printSummary(progress);
         process.exit(1);
       }
     }
 
     session = navResult.session;
-    await processPage(client, session, config, navResult.page.records);
+    await processPage(client, session, config, navResult.page.records, pageNum, progress.totalPages);
     progress.lastCompletedPage = pageNum;
-    saveProgress(progress); // atomic write — seguro ante kill/crash
+    saveProgress(progress);
   }
 
   printSummary(progress);
   if (config.maxPages !== null && progress.lastCompletedPage < progress.totalPages) {
-    console.log(
-      `\n[DONE] Límite --pages=${config.maxPages} alcanzado. Quedan ${progress.totalPages - progress.lastCompletedPage} páginas.`
-    );
-    console.log("       Para continuar: pnpm start:tfa  (retoma desde aquí automáticamente)");
+    log.info("Límite de páginas alcanzado", {
+      maxPages: config.maxPages,
+      remaining: progress.totalPages - progress.lastCompletedPage,
+    });
   } else {
-    console.log("\n[DONE] Scraping completado.");
+    log.info("Scraping completado", { site: config.site.key, totalPages: progress.totalPages });
   }
 }
 
@@ -201,22 +212,46 @@ async function processPage(
   client: AxiosInstance,
   session: JsfSession,
   config: ScraperConfig,
-  records: DocumentRecord[]
+  records: DocumentRecord[],
+  pageNum: number,
+  totalPages: number
 ): Promise<void> {
   appendRecords(records);
+  log.debug("Registros persistidos", { page: pageNum, count: records.length });
 
   if (config.skipPdfs) return;
 
+  let downloaded = 0;
+  let skipped = 0;
+  let failed = 0;
+
   for (const record of records) {
     if (record.pdfParamUuid === null) {
-      console.log(`  [SKIP] Sin PDF: ${record.nroResolucion || record.nro}`);
+      log.debug("Sin PDF adjunto", { nro: record.nro, resolucion: record.nroResolucion });
+      skipped++;
       continue;
     }
     const result = await downloadPdf(client, session, config.site, record);
-    if (!result.success) {
+    if (result.success) {
+      downloaded++;
+    } else {
+      failed++;
       recordFailedDownload(record, result.error ?? "Error desconocido");
+      log.warn("PDF fallido — registrado para reintento", {
+        resolucion: record.nroResolucion,
+        error: result.error,
+      });
     }
   }
+
+  log.info("Página procesada", {
+    page: pageNum,
+    totalPages,
+    records: records.length,
+    pdfsDescargados: downloaded,
+    pdfsSkipped: skipped,
+    pdfsFailidos: failed,
+  });
 }
 
 async function retryFailedDownloads(
@@ -226,19 +261,27 @@ async function retryFailedDownloads(
 ): Promise<void> {
   const failed = loadFailedDownloads();
   if (failed.length === 0) {
-    console.log("[INFO] Sin descargas fallidas pendientes.");
+    log.info("Sin descargas fallidas pendientes");
     return;
   }
-  console.log(`\n[RETRY] Reintentando ${failed.length} descargas fallidas...`);
+
+  log.info("Reintentando descargas fallidas", { count: failed.length });
+  let recovered = 0;
+
   for (const { record } of failed) {
     const result = await downloadPdf(client, session, config.site, record);
-    if (!result.success) {
-      console.warn(`  [FAIL] Sigue fallando: ${record.nroResolucion}`);
+    if (result.success) {
+      recovered++;
+    } else {
+      log.warn("PDF sigue fallando tras reintento", { resolucion: record.nroResolucion });
     }
   }
+
+  log.info("Reintentos completados", { recovered, total: failed.length });
 }
 
 main().catch((err: unknown) => {
-  console.error("[FATAL]", err);
+  log.error("Error fatal no capturado", { error: String(err) });
+  log.close();
   process.exit(1);
 });

@@ -6,6 +6,7 @@ import { withRetry, randomDelay } from "../client/httpClient";
 import { JsfSession } from "../scrapers/jsfSession";
 import { SiteConfig } from "../config/sites";
 import { env } from "../config/env";
+import { log } from "../logger";
 
 const FORM_ID = "listarDetalleInfraccionRAAForm";
 
@@ -35,7 +36,7 @@ export async function downloadPdf(
   const filePath = path.join(env.pdfDir, filename);
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) {
-    console.log(`  [SKIP] Ya existe: ${filename}`);
+    log.debug("PDF ya existe en disco", { file: filename });
     return { record, success: true, filePath, error: null };
   }
 
@@ -71,7 +72,7 @@ export async function downloadPdf(
     return { record, success: false, filePath: null, error: "Falló tras todos los reintentos" };
   }
 
-  console.log(`  [PDF] ${filename}`);
+  log.info("PDF descargado", { file: filename, resolucion: record.nroResolucion });
   return { record, success: true, filePath: result, error: null };
 }
 

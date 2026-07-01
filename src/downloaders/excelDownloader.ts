@@ -5,6 +5,7 @@ import { withRetry, randomDelay } from "../client/httpClient";
 import { JsfSession } from "../scrapers/jsfSession";
 import { SiteConfig } from "../config/sites";
 import { env } from "../config/env";
+import { log } from "../logger";
 
 const FORM_ID = "listarDetalleInfraccionRAAForm";
 
@@ -26,7 +27,7 @@ export async function downloadExcel(
   const filePath = path.join(env.excelDir, filename);
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) {
-    console.log(`[SKIP] Excel ya existe: ${filename}`);
+    log.debug("Excel ya existe en disco", { file: filename });
     return { success: true, filePath, error: null };
   }
 
@@ -61,7 +62,7 @@ export async function downloadExcel(
     return { success: false, filePath: null, error: "Falló tras todos los reintentos" };
   }
 
-  console.log(`[EXCEL] Descargado: ${filename}`);
+  log.info("Excel descargado", { file: filename });
   return { success: true, filePath: result, error: null };
 }
 

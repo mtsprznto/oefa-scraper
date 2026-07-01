@@ -2,6 +2,7 @@ import { AxiosInstance } from "axios";
 import * as cheerio from "cheerio";
 import { SiteConfig } from "../config/sites";
 import { env } from "../config/env";
+import { log } from "../logger";
 
 export interface JsfSession {
   viewState: string;
@@ -34,9 +35,11 @@ export async function initSession(
   const setCookie = (response.headers["set-cookie"] as string[] | undefined) ?? [];
   const jsessionId = extractJsessionId(setCookie);
 
-  console.log(
-    `[SESSION] ${site.label} — ViewState: ${viewState.substring(0, 20)}... JSESSIONID: ${jsessionId.substring(0, 8)}...`
-  );
+  log.info("Sesión JSF inicializada", {
+    site: site.key,
+    viewStatePrefix: viewState.substring(0, 20) + "...",
+    jsessionIdPrefix: jsessionId.substring(0, 8) + "...",
+  });
 
   return { viewState, jsessionId, siteUrl };
 }

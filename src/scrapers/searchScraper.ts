@@ -7,6 +7,7 @@ import {
 import { SiteConfig } from "../config/sites";
 import { ParsedPage, parseSearchResponse, parsePaginationResponse } from "../parsers/documentParser";
 import { randomDelay, withRetry } from "../client/httpClient";
+import { log } from "../logger";
 
 // IDs de form verificados en HTML real — idénticos en TFA y DFSAI
 const FORM_ID = "listarDetalleInfraccionRAAForm";
@@ -46,7 +47,7 @@ export async function executeSearch(
   // Detectar HTTP 200 con body inesperado (captcha, error page, anti-bot).
   // partial-response válida de JSF siempre contiene el updateId del form.
   if (!xml.includes("listarDetalleInfraccionRAAForm")) {
-    console.error("[ERROR] executeSearch — respuesta no es partial-response JSF válida. Posible bloqueo o captcha.");
+    log.error("Respuesta no es partial-response JSF válida — posible bloqueo o captcha");
     return null;
   }
 
@@ -85,10 +86,10 @@ export async function navigateToPage(
   // Se retorna igualmente — el caller (index.ts) detecta el vacío y re-inicializa sesión.
   // Loguear aquí para trazabilidad: distingue expiración de sesión vs error de red (que retorna null).
   if (page.records.length === 0) {
-    console.warn(
-      `[WARN] navigateToPage(${pageNumber}) — respuesta vacía (0 registros). ` +
-      `Posible ViewState expirado o respuesta inesperada del servidor.`
-    );
+    log.warn("Respuesta vacía en paginación — posible ViewState expirado", {
+      page: pageNumber,
+      site: site.key,
+    });
   }
 
   return { page, session: updatedSession };

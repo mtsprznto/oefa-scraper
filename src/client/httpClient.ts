@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from "axios";
 import { wrapper } from "axios-cookiejar-support";
 import { CookieJar } from "tough-cookie";
 import { env } from "../config/env";
+import { log } from "../logger";
 
 const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000]; // backoff exponencial
 
@@ -50,16 +51,20 @@ export async function withRetry<T>(
 
       if (!isRetryable || attempt === RETRY_DELAYS_MS.length) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[ERROR] ${context} — status=${status ?? "?"}: ${msg}`);
+        log.error(`${context} falló`, { status: status ?? "?", error: msg });
         return null;
       }
 
       const baseDelay = RETRY_DELAYS_MS[attempt];
       const jitter = Math.floor(baseDelay * 0.25 * (Math.random() * 2 - 1));
       const delay = baseDelay + jitter;
-      console.warn(
-        `[RETRY] ${context} — HTTP ${status}, reintento ${attempt + 1}/${RETRY_DELAYS_MS.length} en ${delay}ms`
-      );
+      log.warn("Reintento por error HTTP", {
+        context,
+        status,
+        attempt: attempt + 1,
+        maxAttempts: RETRY_DELAYS_MS.length,
+        delayMs: delay,
+      });
       await sleep(delay);
     }
   }

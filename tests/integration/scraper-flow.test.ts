@@ -38,7 +38,7 @@ let tmpDir: string;
 let pdfDir: string;
 let dataDir: string;
 
-beforeEach(() => {
+beforeEach(async () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "scraper-integration-"));
   pdfDir = path.join(tmpDir, "pdf");
   dataDir = path.join(tmpDir, "data");
@@ -48,6 +48,10 @@ beforeEach(() => {
   process.env["DOWNLOAD_DIR"] = tmpDir;
   process.env["DATA_DIR"] = dataDir;
   vi.resetModules();
+
+  // Resetear el stream del logger para que use el nuevo DATA_DIR de este test
+  const { log } = await import("../../src/logger");
+  log.reset();
 });
 
 afterEach(() => {

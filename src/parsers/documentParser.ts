@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { SiteConfig } from "../config/sites";
+import { log } from "../logger";
 
 export interface DocumentRecord {
   nro: string;
@@ -35,9 +36,13 @@ export function parseSearchResponse(partialXml: string, site: SiteConfig): Parse
 
   const records = parseRows(cdata, site);
 
-  console.log(
-    `[PARSE] ${site.label} — página ${pageIndex + 1}/${totalPages}, ${records.length} registros (total: ${totalRecords})`
-  );
+  log.debug("Search response parseado", {
+    site: site.key,
+    page: pageIndex + 1,
+    totalPages,
+    records: records.length,
+    totalRecords,
+  });
 
   return { records, totalRecords, currentPage: pageIndex + 1, totalPages };
 }
@@ -56,9 +61,12 @@ export function parsePaginationResponse(
 
   const records = parseRows(cdata, site);
 
-  console.log(
-    `[PARSE] ${site.label} — página ${pageNumber}/${totalPages}, ${records.length} registros`
-  );
+  log.debug("Pagination response parseado", {
+    site: site.key,
+    page: pageNumber,
+    totalPages,
+    records: records.length,
+  });
 
   return { records, totalRecords, currentPage: pageNumber, totalPages };
 }
