@@ -5,6 +5,7 @@ import { resolveSite, SiteConfig } from "./config/sites";
 import { initSession, JsfSession } from "./scrapers/jsfSession";
 import { executeSearch, navigateToPage, SearchFilters } from "./scrapers/searchScraper";
 import { downloadPdf, ensureDownloadDir } from "./downloaders/pdfDownloader";
+import { downloadExcel } from "./downloaders/excelDownloader";
 import { DocumentRecord } from "./parsers/documentParser";
 import {
   ensureDataDir,
@@ -110,6 +111,11 @@ async function runFreshScraper(
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+
+  // Descargar Excel con todos los registros del resultado (una sola vez tras el search)
+  if (!skipPdfs) {
+    await downloadExcel(client, session, site);
+  }
 
   // Procesar página 1 (ya la tenemos del search)
   await processPage(client, session, site, firstPage.records, skipPdfs);
