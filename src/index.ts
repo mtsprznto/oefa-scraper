@@ -31,17 +31,46 @@ function parseArgs(): ScraperConfig {
   const startPageRaw = get("--start-page=");
   const multiplierRaw = get("--delay-multiplier=");
 
+  // Validar --start-page: debe ser entero >= 1
+  let startPage: number | undefined;
+  if (startPageRaw !== undefined) {
+    const parsed = parseInt(startPageRaw, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      console.error(`[ERROR] --start-page debe ser un entero >= 1 (recibido: "${startPageRaw}")`);
+      process.exit(1);
+    }
+    startPage = parsed;
+  }
+
+  // Validar --delay-multiplier: debe ser número > 0
+  let delayMultiplier = 1.0;
+  if (multiplierRaw !== undefined) {
+    const parsed = parseFloat(multiplierRaw);
+    if (isNaN(parsed) || parsed <= 0) {
+      console.error(`[ERROR] --delay-multiplier debe ser un número > 0 (recibido: "${multiplierRaw}")`);
+      process.exit(1);
+    }
+    delayMultiplier = parsed;
+  }
+
   return {
     site: resolveSite(siteKey),
     maxPages: pagesRaw ? parseInt(pagesRaw, 10) : null,
     skipPdfs: argv.includes("--skip-pdfs"),
     sessionId,
-    startPage: startPageRaw ? parseInt(startPageRaw, 10) : undefined,
-    delayMultiplier: multiplierRaw ? parseFloat(multiplierRaw) : 1.0,
+    startPage,
+    delayMultiplier,
   };
 }
 
 const FILTERS: SearchFilters = {};
+// TODO: exponer vía --sector, --nro-expediente, etc. cuando se necesite filtrar
+
+// Cierra el logger y sale con el código dado — garantiza flush del stream JSONL
+function die(code: number): never {
+  log.close();
+  process.exit(code);
+}
 
 async function main(): Promise<void> {
   const config = parseArgs();
@@ -105,7 +134,7 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
 
   if (!searchResult) {
     log.error("Búsqueda fallida", { site: config.site.label });
-    process.exit(1);
+    die(1);
   }
 
   session = searchResult.session;
@@ -115,7 +144,7 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
     log.warn("0 registros encontrados — verificar conectividad y acceso al sitio", {
       site: config.site.label,
     });
-    process.exit(0);
+    die(0);
   }
 
   log.info("Totales obtenidos", {
@@ -167,7 +196,7 @@ async function initAtPage(client: AxiosInstance, config: ScraperConfig): Promise
 
   if (!searchResult || searchResult.page.totalRecords === 0) {
     log.error("No se pudo obtener totales del sitio para --start-page");
-    process.exit(1);
+    die(1);
   }
 
   session = searchResult.session;
@@ -217,7 +246,7 @@ async function runScraper(
   const searchResult = await executeSearch(client, session, config.site, FILTERS, config.delayMultiplier);
   if (!searchResult || searchResult.page.totalRecords === 0) {
     log.error("No se pudo re-establecer sesión para paginar");
-    process.exit(1);
+    die(1);
   }
   session = searchResult.session;
 
@@ -257,7 +286,7 @@ async function runScraper(
       if (!navResult || navResult.page.records.length === 0) {
         log.error("Página sigue vacía tras re-inicialización", { page: pageNum });
         printSummary(progress, sid);
-        process.exit(1);
+        die(1);
       }
     }
 
@@ -358,5 +387,5 @@ async function retryFailedDownloads(
 main().catch((err: unknown) => {
   log.error("Error fatal no capturado", { error: String(err) });
   log.close();
-  process.exit(1);
+  die(1);
 });

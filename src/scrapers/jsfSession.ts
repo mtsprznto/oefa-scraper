@@ -55,17 +55,6 @@ export function updateViewState(
   return { ...session, viewState: newViewState };
 }
 
-// Detecta respuesta vacía inesperada que indica ViewState expirado.
-// Distinto de 429: no hay error HTTP, el servidor devuelve 0 resultados silenciosamente.
-export function isViewStateExpired(
-  xml: string,
-  expectedMinRecords: number
-): boolean {
-  if (expectedMinRecords === 0) return false;
-  const match = xml.match(/rowCount:(\d+)/);
-  const rowCount = match ? parseInt(match[1], 10) : 0;
-  return rowCount === 0;
-}
 
 export function extractViewState(html: string): string | null {
   const $ = cheerio.load(html);

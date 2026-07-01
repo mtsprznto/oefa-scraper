@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { DocumentRecord } from "../parsers/documentParser";
 import { env } from "../config/env";
+import { log } from "../logger";
 
 // Helpers de ruta: con sessionId → data/sessions/{id}/, sin sessionId → data/
 export function getSessionDir(sessionId?: string): string {
@@ -105,15 +106,29 @@ export function printSummary(progress: ScraperProgress, sessionId?: string): voi
   const row = (label: string, value: string) =>
     `║  ${(label + ": " + value).padEnd(W - 2)}║`;
 
-  console.log(`\n╔${line}╗`);
-  console.log(`║  ${"CHECKPOINT — " + progress.site.toUpperCase()}${" ".repeat(W - 16 - progress.site.length)}║`);
-  console.log(`╠${line}╣`);
-  console.log(row("Páginas", `${progress.lastCompletedPage}/${progress.totalPages} (${pct}%)`));
-  console.log(row("Registros", `${records.length}/${progress.totalRecords}`));
-  console.log(row("PDFs fallidos", String(failed.length)));
-  console.log(row("Inicio", progress.startedAt.substring(0, 19)));
-  console.log(row("Último", progress.updatedAt.substring(0, 19)));
-  console.log(`╚${line}╝`);
+  // Salida visual a consola (checkpoint box) + registro estructurado al log JSONL
+  const summary = [
+    `\n╔${line}╗`,
+    `║  ${"CHECKPOINT — " + progress.site.toUpperCase()}${" ".repeat(W - 16 - progress.site.length)}║`,
+    `╠${line}╣`,
+    row("Páginas", `${progress.lastCompletedPage}/${progress.totalPages} (${pct}%)`),
+    row("Registros", `${records.length}/${progress.totalRecords}`),
+    row("PDFs fallidos", String(failed.length)),
+    row("Inicio", progress.startedAt.substring(0, 19)),
+    row("Último", progress.updatedAt.substring(0, 19)),
+    `╚${line}╝`,
+  ].join("\n");
+
+  console.log(summary);
+  log.info("Checkpoint", {
+    site: progress.site,
+    pagesCompleted: progress.lastCompletedPage,
+    totalPages: progress.totalPages,
+    pct,
+    records: records.length,
+    totalRecords: progress.totalRecords,
+    failedPdfs: failed.length,
+  });
 }
 
 // Escritura atómica: .tmp → rename, evita JSON corrupto si el proceso muere a mitad

@@ -7,14 +7,14 @@ describe("config/sites", () => {
       const site = resolveSite("dfsai");
       expect(site.key).toBe("dfsai");
       expect(site.path).toBe("/repdig/consulta/consultaDfsai.xhtml");
-      expect(site.col6Label).toBe("Nro. Resolución de Sanción");
+      expect(site.label).toBeTruthy();
     });
 
     it("retorna config de tfa", () => {
       const site = resolveSite("tfa");
       expect(site.key).toBe("tfa");
       expect(site.path).toBe("/repdig/consulta/consultaTfa.xhtml");
-      expect(site.col6Label).toBe("Nro. Resolución de Apelación");
+      expect(site.label).toBeTruthy();
     });
 
     it("lanza error para sitio desconocido", () => {

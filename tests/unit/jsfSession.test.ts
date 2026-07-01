@@ -3,7 +3,6 @@ import {
   extractViewState,
   buildPathWithSession,
   updateViewState,
-  isViewStateExpired,
   initSession,
 } from "../../src/scrapers/jsfSession";
 import {
@@ -84,30 +83,6 @@ describe("updateViewState()", () => {
   });
 });
 
-// ─── isViewStateExpired ───────────────────────────────────────────────────────
-
-describe("isViewStateExpired()", () => {
-  it("retorna false cuando expectedMinRecords=0 (nunca expira en 0)", () => {
-    // rowCount:0 en XML pero con expectedMinRecords=0 → no se considera expirado
-    const xml = `rowCount:0`;
-    expect(isViewStateExpired(xml, 0)).toBe(false);
-  });
-
-  it("retorna true cuando rowCount=0 y se esperaban registros", () => {
-    const xml = `rowCount:0`;
-    expect(isViewStateExpired(xml, 10)).toBe(true);
-  });
-
-  it("retorna false cuando rowCount tiene registros", () => {
-    const xml = `rowCount:1753,page:0`;
-    expect(isViewStateExpired(xml, 10)).toBe(false);
-  });
-
-  it("retorna true cuando no hay rowCount en XML y se esperaban registros", () => {
-    const xml = `<partial-response><changes></changes></partial-response>`;
-    expect(isViewStateExpired(xml, 1)).toBe(true);
-  });
-});
 
 // ─── initSession ─────────────────────────────────────────────────────────────
 
