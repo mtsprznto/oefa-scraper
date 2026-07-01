@@ -1,0 +1,112 @@
+[
+  {
+    "nro": "1",
+    "numeroExpediente": "891-08-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Corporación del Mar  S.A.\nAustral Group S.A.A.",
+    "unidadFiscalizable": "Planta Playa Lado Norte Puerto Malabrigo",
+    "sector": "Pesquería",
+    "nroResolucion": "264-2012-OEFA/TFA",
+    "pdfRowIndex": 0,
+    "pdfParamUuid": "153a6d2a-cbed-40ef-b8ef-cd2272b19867",
+    "archivoNombre": "264-2012-OEFA_TFA"
+  },
+  {
+    "nro": "2",
+    "numeroExpediente": "857-2011-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Consorcio Pacífico Sur S.R.L.",
+    "unidadFiscalizable": "Planta de Congelado y Harina Residual",
+    "sector": "Pesquería",
+    "nroResolucion": "007-2016-OEFA/TFA-SEPIM",
+    "pdfRowIndex": 1,
+    "pdfParamUuid": "9c8d4d4a-846f-4e41-b047-4dbb8b1d2571",
+    "archivoNombre": "007-2016-OEFA_TFA-SEPIM"
+  },
+  {
+    "nro": "3",
+    "numeroExpediente": "853-2011-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Nutrifish S.A.C.",
+    "unidadFiscalizable": "Planta de procesamiento de recursos hidrobiológicos para consumo humano indirecto (Planta de Harina Residual)",
+    "sector": "Pesquería",
+    "nroResolucion": "019-2015-OEFA/TFA-SEPIM",
+    "pdfRowIndex": 2,
+    "pdfParamUuid": "c49ed7f3-85ea-42ff-a290-cc39dc206f51",
+    "archivoNombre": "019-2015-OEFA_TFA-SEPIM"
+  },
+  {
+    "nro": "4",
+    "numeroExpediente": "849-2011-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Langostinera Slava S.R.L.",
+    "unidadFiscalizable": "Concesión de acuicultura",
+    "sector": "Pesquería",
+    "nroResolucion": "251-2013-OEFA/TFA",
+    "pdfRowIndex": 3,
+    "pdfParamUuid": "6c6ea1cb-34d2-4644-a09e-f8cde168dfa3",
+    "archivoNombre": "251-2013-OEFA_TFA"
+  },
+  {
+    "nro": "5",
+    "numeroExpediente": "7873-06288-05-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Pedro Orlando Acevedo Talledo",
+    "unidadFiscalizable": "Planta Harina Residual",
+    "sector": "Pesquería",
+    "nroResolucion": "098-2012-OEFA/TFA",
+    "pdfRowIndex": 4,
+    "pdfParamUuid": "5bd2f5a1-8dc8-4fcd-b89f-90ad3c3d1de8",
+    "archivoNombre": "098-2012-OEFA_TFA"
+  },
+  {
+    "nro": "6",
+    "numeroExpediente": "7363-2007-PRODUCE/DIGSECOVI-DSVS",
+    "administrado": "Procesadora de Productos Marinos S.A.",
+    "unidadFiscalizable": "Planta de Harina y Aceite de Pescado",
+    "sector": "Pesquería",
+    "nroResolucion": "288-2012-OEFA/TFA",
+    "pdfRowIndex": 5,
+    "pdfParamUuid": "a803c51c-216d-44d5-95bc-c3a1f890af1e",
+    "archivoNombre": "288-2012-OEFA_TFA"
+  },
+  {
+    "nro": "7",
+    "numeroExpediente": "6740-07-PRODUCE/DIGSECOVI-Dsvs \n103-2009-PRODUCE/CAS",
+    "administrado": "Corporación Pesquera Inca S.A.C.",
+    "unidadFiscalizable": "EIP Chimbote",
+    "sector": "Pesquería",
+    "nroResolucion": "122-2012-OEFA/TFA",
+    "pdfRowIndex": 6,
+    "pdfParamUuid": "b8239a70-4239-475d-9505-573fe101548d",
+    "archivoNombre": "122-2012-OEFA_TFA"
+  },
+  {
+    "nro": "8",
+    "numeroExpediente": "666-2011-PRODUCE/DIGSECOVI",
+    "administrado": "Compañía Americana de Conservas S.A.C.",
+    "unidadFiscalizable": "Planta de Congelado",
+    "sector": "Pesquería",
+    "nroResolucion": "250-2012-OEFA/TFA",
+    "pdfRowIndex": 7,
+    "pdfParamUuid": "84a8f8fb-6c37-4f9e-bb09-b075f59544c4",
+    "archivoNombre": "250-2012-OEFA_TFA"
+  },
+  {
+    "nro": "9",
+    "numeroExpediente": "665-2011-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Consorcio Pesquero El Ferrol S.A.C.",
+    "unidadFiscalizable": "EIP \nPlanta de Enlatado de Productos para Consumo Humano",
+    "sector": "Pesquería",
+    "nroResolucion": "188-2012-OEFA/TFA",
+    "pdfRowIndex": 8,
+    "pdfParamUuid": "40614774-a826-45be-80c3-eb9492bafd56",
+    "archivoNombre": "188-2012-OEFA_TFA"
+  },
+  {
+    "nro": "10",
+    "numeroExpediente": "659-2011-PRODUCE/DIGSECOVI-Dsvs",
+    "administrado": "Recursos del Mar S.A.C.",
+    "unidadFiscalizable": "Planta de procesamiento de recursos hidrobiológicos para consumo humano directo (Planta de Harina Convencional)",
+    "sector": "Pesquería",
+    "nroResolucion": "023-2014-OEFA/TFA",
+    "pdfRowIndex": 9,
+    "pdfParamUuid": "f1c2aa5f-07ee-4309-8ba7-1be055447760",
+    "archivoNombre": "023-2014-OEFA_TFA"
+  }
+]

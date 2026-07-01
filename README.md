@@ -9,54 +9,13 @@ El desafío propone dos targets:
 | Site | URL | Acceso |
 |------|-----|--------|
 | **Poder Judicial Perú** (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | HTTP 403 fuera de Perú |
-| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Accesible sin VPN |
+| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Sin VPN |
 
-El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`): mismo stack JSF/PrimeFaces, misma estructura de paginación y descarga. El target principal devuelve HTTP 403 desde IPs fuera de Perú, lo que impide explorar su estructura o verificar el scraper sin acceso físico de red. Adaptar al PJ requiere cambiar la URL y form IDs en `src/config/sites.ts`.
+El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`): mismo stack JSF/PrimeFaces, misma estructura de paginación, mismos form IDs, misma mecánica de descarga de PDFs. El target principal devuelve HTTP 403 desde IPs fuera de Perú — imposible explorar su estructura o verificar sin acceso físico de red. Adaptar al PJ requiere solo cambiar la URL y form IDs en `src/config/sites.ts`.
 
-## Requisitos
+**Stack del sitio:** JSF (JavaServer Faces) con PrimeFaces 6.0. Todos los payloads verificados contra HAR real capturado con DevTools.
 
-- Node.js v18+
-- pnpm v8+
-
-## Instalación
-
-```bash
-pnpm install
-```
-
-## Uso
-
-```bash
-# Scraping completo (1753 docs, 176 páginas) — reanuda si se interrumpe
-pnpm start:tfa
-
-# Demo rápida: 3 páginas (30 registros)
-pnpm demo
-
-# Solo metadata, sin descargar PDFs
-pnpm demo:no-pdfs
-
-# Ver estado del checkpoint actual
-pnpm status
-```
-
-### Flags disponibles
-
-| Flag | Descripción | Ejemplo |
-|------|-------------|---------|
-| `--site=tfa\|dfsai` | Sitio objetivo (default: `dfsai`) | `pnpm start --site=tfa` |
-| `--pages=N` | Limitar a N páginas — demo/prueba | `pnpm start --site=tfa --pages=5` |
-| `--skip-pdfs` | Solo extraer metadata, no descargar PDFs | `pnpm start --site=tfa --skip-pdfs` |
-
-## Sitio objetivo
-
-**URL:** `https://publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml`
-
-**Stack detectado:** JSF (JavaServer Faces) con PrimeFaces 6.0. Cada interacción es un POST AJAX con `javax.faces.ViewState` que rota en cada respuesta — implementado correctamente con extracción dinámica.
-
-**Todos los payloads verificados contra HAR real** (DevTools Network capture del sitio con IP peruana).
-
-### Campos extraídos
+### Campos extraídos (1753 registros, 176 páginas)
 
 | Campo | Descripción |
 |-------|-------------|
@@ -67,16 +26,65 @@ pnpm status
 | `sector` | ELECTRICIDAD / HIDROCARBUROS / INDUSTRIA / MINERIA / PESQUERÍA |
 | `nroResolucion` | Número de resolución TFA (nombre del PDF) |
 
+## Requisitos
+
+- Node.js v18+
+- pnpm v8+ (`npm install -g pnpm` si no lo tenés)
+
+## Instalación
+
+```bash
+pnpm install
+```
+
+## Uso
+
+```bash
+# Demo rápida: 3 páginas (30 registros + PDFs)
+pnpm demo
+
+# Scraping completo (1753 docs, 176 páginas) — reanuda si se interrumpe
+pnpm start:tfa
+
+# Solo metadata, sin descargar PDFs
+pnpm demo:no-pdfs
+
+# Ver estado del checkpoint actual
+pnpm status
+
+# Tests
+pnpm test
+```
+
+### Flags disponibles
+
+| Flag | Descripción | Ejemplo |
+|------|-------------|---------|
+| `--site=tfa\|dfsai` | Sitio objetivo (default: `dfsai`) | `pnpm start --site=tfa` |
+| `--pages=N` | Limitar a N páginas — demo/prueba | `pnpm start --site=tfa --pages=5` |
+| `--skip-pdfs` | Solo extraer metadata, no descargar PDFs | `pnpm start --site=tfa --skip-pdfs` |
+
+## Sample output
+
+El directorio `sample-output/` contiene evidencia real de una ejecución:
+
+- `records.json` — 10 registros de la página 1 (campos completos)
+- `pdf/` — 3 PDFs con nombre descriptivo (`264-2012-OEFA_TFA.pdf`, etc.)
+- `scraper.log` — log JSONL estructurado de la sesión
+
+Para ver la ejecución completa correr `pnpm demo` (3 páginas, ~2 min).
+
 ## Salida
 
 ```
 downloads/
   pdf/     ← PDFs descargados (nombre = nroResolucion sanitizado)
-  excel/   ← Reservado para exportación Excel
+  excel/   ← RESOLUCIONES_APELACION.xls (exportación completa)
 data/
   records.json          ← Todos los registros extraídos (ordenados por nro)
-  failed_downloads.json ← PDFs que fallaron (para reintento)
+  failed_downloads.json ← PDFs que fallaron (para reintento automático)
   progress.json         ← Checkpoint para reanudar si se interrumpe
+  scraper.log           ← Log JSONL estructurado
 ```
 
 ## Características técnicas
@@ -100,26 +108,20 @@ data/
 - CookieJar persistente (tough-cookie) para mantener JSESSIONID
 
 ### Arquitectura JSF
-- `javax.faces.ViewState` extraído por `indexOf` (no regex — los `]]>` del CDATA corrompen los character classes)
+- `javax.faces.ViewState` extraído por `indexOf` (no regex — los `]]>` del CDATA corrompen character classes)
 - ViewState rota en cada respuesta AJAX — actualizado automáticamente
 - Paginación con `dt_first` (offset de registros, verificado en HAR) — no índice de página
-- PDF descargado via POST no-AJAX con `pdfRowIndex` global (data-ri) + `param_uuid` del onclick de `mojarra.jsfcljs`
+- PDF via POST no-AJAX con `pdfRowIndex` global (data-ri) + `param_uuid` del onclick de `mojarra.jsfcljs`
+- Sesión expirada mid-scraping → re-inicializa + re-establece estado JSF → reintenta la página
 
-### Sesión expirada
-- Página vacía inesperada mid-scraping → re-inicializa sesión + re-establece estado JSF → reintenta la página
-
-## Sitio alternativo (sin VPN)
-
-Para desarrollo y testing (misma estructura JSF):
-```bash
-pnpm start:dfsai
-```
-`https://publico.oefa.gob.pe/repdig/consulta/consultaDfsai.xhtml` — mismo dominio, mismos form IDs, sin geo-bloqueo.
+### Observabilidad
+- Logger dual output: consola con colores + JSONL en `data/scraper.log`
+- Cada entrada: `{ts, level, msg, ctx}` — machine-readable, grep-able
 
 ## Tests
 
 ```bash
-pnpm test              # 104 tests, 8 archivos
+pnpm test              # 106 tests, 8 archivos
 pnpm test:coverage     # con coverage report
 ```
 
@@ -127,9 +129,9 @@ pnpm test:coverage     # con coverage report
 
 | Criterio | Cobertura |
 |----------|-----------|
-| Navegar todas las páginas | Fixtures con data-ri global, offset `dt_first` verificado |
+| Navegar todas las páginas | Fixtures con data-ri global, offset `dt_first` verificado en HAR |
 | Extraer info completa | 7 campos + PDF params del onclick, datos exactos del HAR |
-| PDFs con nombre descriptivo | `sanitizeFilename` + `archivoNombre` + filePath |
+| PDFs con nombre descriptivo | `sanitizeFilename` + `nroResolucion` como filename |
 | 429 con backoff exponencial | `withRetry`: retry→éxito, 4 reintentos máx, null sin lanzar |
 | Continuar tras 429 persistente | null propagado al caller, flujo no interrumpido |
 | Registrar fallidos | `recordFailedDownload` + `loadFailedDownloads` idempotente |

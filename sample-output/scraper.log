@@ -1,0 +1,9 @@
+{"ts":"2026-07-01T17:31:01.135Z","level":"INFO","msg":"Modo demo","ctx":{"maxPages":1}}
+{"ts":"2026-07-01T17:31:01.137Z","level":"INFO","msg":"--skip-pdfs activo: solo extracción de metadata"}
+{"ts":"2026-07-01T17:31:01.138Z","level":"INFO","msg":"Iniciando scraper","ctx":{"site":"tfa"}}
+{"ts":"2026-07-01T17:31:02.635Z","level":"INFO","msg":"Sesión JSF inicializada","ctx":{"site":"tfa","viewStatePrefix":"EW951oSPeeH69OwJKku+...","jsessionIdPrefix":"2876C26A..."}}
+{"ts":"2026-07-01T17:31:02.636Z","level":"INFO","msg":"Ejecutando búsqueda inicial"}
+{"ts":"2026-07-01T17:31:13.066Z","level":"DEBUG","msg":"Search response parseado","ctx":{"site":"tfa","page":1,"totalPages":176,"records":10,"totalRecords":1753}}
+{"ts":"2026-07-01T17:31:13.071Z","level":"INFO","msg":"Totales obtenidos","ctx":{"totalRecords":1753,"totalPages":176}}
+{"ts":"2026-07-01T17:31:13.073Z","level":"DEBUG","msg":"Registros persistidos","ctx":{"page":1,"count":10}}
+{"ts":"2026-07-01T17:31:13.075Z","level":"INFO","msg":"Límite de páginas alcanzado","ctx":{"maxPages":1}}

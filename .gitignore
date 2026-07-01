@@ -7,3 +7,7 @@ tmp/
 .env
 .claude/
 tests/integration/_rewrite.flag
+
+# Excepciones: sample-output se commitea como evidencia de ejecución real
+!sample-output/
+!sample-output/**
