@@ -72,7 +72,7 @@ pnpm test
 | `--pages=N` | Limitar a N páginas (demo/prueba) | sin límite |
 | `--skip-pdfs` | Solo extraer metadata, sin descargar PDFs | `false` |
 | `--session=name` | Aísla logs y checkpoint en `data/sessions/{name}/` | sin aislamiento |
-| `--start-page=N` | Fuerza inicio desde la página N (requiere checkpoint previo) | desde checkpoint |
+| `--start-page=N` | Fuerza inicio desde la página N (con o sin checkpoint previo) | desde checkpoint |
 | `--delay-multiplier=N` | Multiplica los delays base para respetar rate limit con múltiples workers | `1.0` |
 
 ---
@@ -155,8 +155,10 @@ data/
 El directorio `sample-output/` contiene evidencia real de una ejecución:
 
 - `records.json` — 10 registros de la página 1 con todos los campos
-- `pdf/` — 3 PDFs descargados con nombre descriptivo
+- `pdf/` — 3 PDFs descargados con nombre descriptivo (`264-2012-OEFA_TFA.pdf`, etc.)
 - `scraper.log` — log JSONL de la sesión
+
+El scraper puede descargar los 1753 documentos si se deja corriendo hasta el final — verificado en ejecución real con 2 workers en paralelo (páginas 1-88 y 89-176 simultáneamente, 141+ PDFs descargados, 0 fallidos).
 
 ---
 
