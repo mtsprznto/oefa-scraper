@@ -65,17 +65,28 @@ pnpm test
 | `--skip-pdfs` | Solo extraer metadata, no descargar PDFs | `pnpm start --site=tfa --skip-pdfs` |
 | `--session=name` | Aísla logs y checkpoint en `data/sessions/{name}/` | `pnpm start --session=instancia-a` |
 | `--start-page=N` | Fuerza inicio desde la página N (override del checkpoint) | `pnpm start --session=instancia-a --start-page=50` |
+| `--delay-multiplier=N` | Escala los delays base (anti-ban con múltiples workers) | `pnpm start --session=w2 --delay-multiplier=1.5` |
 
-### Multi-instancia
+### Multi-instancia (tmux / múltiples terminales)
 
-Dos procesos en paralelo sobre rangos distintos de páginas:
+Dividir el trabajo entre workers con delays escalados para respetar el rate limit:
+
+| Workers | `--delay-multiplier` | Delay efectivo | Requests/min aprox |
+|---------|---------------------|----------------|-------------------|
+| 1 | 1.0 (default) | 1.5–3.5s | ~20 |
+| 2 | 1.5 | 2.25–5.25s | ~13 por worker |
+| 3 | 2.0 | 3–7s | ~10 por worker |
+| 4+ | 2.5+ | 3.75s+ | ~8 por worker |
 
 ```bash
-# Terminal 1: páginas 1–88
-pnpm start --site=tfa --session=worker-1 --pages=88
+# Paso 1: correr worker-1 unas páginas para crear el checkpoint
+pnpm start --site=tfa --session=worker-1 --pages=88 --delay-multiplier=1.5
 
-# Terminal 2: páginas 89–176 (requiere un checkpoint previo en esa sesión)
-pnpm start --site=tfa --session=worker-2 --start-page=89
+# Paso 2 (en otra terminal): arrancar worker-2 desde donde termina worker-1
+pnpm start --site=tfa --session=worker-2 --start-page=89 --delay-multiplier=1.5
+
+# Reanudar worker-1 si se interrumpe (retoma automáticamente desde el checkpoint)
+pnpm start --site=tfa --session=worker-1 --delay-multiplier=1.5
 ```
 
 Cada sesión escribe en su propio directorio aislado:

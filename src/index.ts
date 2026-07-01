@@ -19,7 +19,7 @@ import {
 } from "./storage/stateManager";
 import { log } from "./logger";
 
-// CLI: --site=tfa|dfsai, --pages=N, --skip-pdfs, --session=name, --start-page=N
+// CLI: --site=tfa|dfsai, --pages=N, --skip-pdfs, --session=name, --start-page=N, --delay-multiplier=N
 function parseArgs(): ScraperConfig {
   const argv = process.argv;
   const get = (prefix: string) =>
@@ -29,6 +29,7 @@ function parseArgs(): ScraperConfig {
   const pagesRaw = get("--pages=");
   const sessionId = get("--session=");
   const startPageRaw = get("--start-page=");
+  const multiplierRaw = get("--delay-multiplier=");
 
   return {
     site: resolveSite(siteKey),
@@ -36,6 +37,7 @@ function parseArgs(): ScraperConfig {
     skipPdfs: argv.includes("--skip-pdfs"),
     sessionId,
     startPage: startPageRaw ? parseInt(startPageRaw, 10) : undefined,
+    delayMultiplier: multiplierRaw ? parseFloat(multiplierRaw) : 1.0,
   };
 }
 
@@ -98,7 +100,7 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
   let session = await initSession(client, config.site);
 
   log.info("Ejecutando búsqueda inicial");
-  const searchResult = await executeSearch(client, session, config.site, FILTERS);
+  const searchResult = await executeSearch(client, session, config.site, FILTERS, config.delayMultiplier);
 
   if (!searchResult) {
     log.error("Búsqueda fallida", { site: config.site.label });
@@ -118,6 +120,7 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
   log.info("Totales obtenidos", {
     totalRecords: firstPage.totalRecords,
     totalPages: firstPage.totalPages,
+    delayMultiplier: config.delayMultiplier,
   });
 
   const progress: ScraperProgress = {
@@ -130,7 +133,7 @@ async function initAndRun(client: AxiosInstance, config: ScraperConfig): Promise
   };
 
   if (!config.skipPdfs) {
-    await downloadExcel(client, session, config.site);
+    await downloadExcel(client, session, config.site, undefined, config.delayMultiplier);
   }
 
   await processPage(client, session, config, firstPage.records, 1, firstPage.totalPages);
@@ -163,7 +166,7 @@ async function runScraper(
   let session = await initSession(client, config.site);
 
   log.info("Re-estableciendo estado de sesión JSF");
-  const searchResult = await executeSearch(client, session, config.site, FILTERS);
+  const searchResult = await executeSearch(client, session, config.site, FILTERS, config.delayMultiplier);
   if (!searchResult || searchResult.page.totalRecords === 0) {
     log.error("No se pudo re-establecer sesión para paginar");
     process.exit(1);
@@ -171,7 +174,7 @@ async function runScraper(
   session = searchResult.session;
 
   if (!config.skipPdfs) {
-    await downloadExcel(client, session, config.site);
+    await downloadExcel(client, session, config.site, undefined, config.delayMultiplier);
   }
 
   const lastPage =
@@ -188,19 +191,19 @@ async function runScraper(
 
     let navResult = await navigateToPage(
       client, session, config.site, pageNum,
-      progress.totalPages, progress.totalRecords, FILTERS
+      progress.totalPages, progress.totalRecords, FILTERS, config.delayMultiplier
     );
 
     // Página vacía = ViewState expirado → re-inicializar sesión y reintentar una vez
     if (!navResult || navResult.page.records.length === 0) {
       log.warn("Página vacía — re-inicializando sesión", { page: pageNum });
       session = await initSession(client, config.site);
-      const retry = await executeSearch(client, session, config.site, FILTERS);
+      const retry = await executeSearch(client, session, config.site, FILTERS, config.delayMultiplier);
       if (retry) session = retry.session;
 
       navResult = await navigateToPage(
         client, session, config.site, pageNum,
-        progress.totalPages, progress.totalRecords, FILTERS
+        progress.totalPages, progress.totalRecords, FILTERS, config.delayMultiplier
       );
 
       if (!navResult || navResult.page.records.length === 0) {
@@ -254,7 +257,7 @@ async function processPage(
       skipped++;
       continue;
     }
-    const result = await downloadPdf(client, session, config.site, record);
+    const result = await downloadPdf(client, session, config.site, record, config.delayMultiplier);
     if (result.success) {
       downloaded++;
     } else {
@@ -293,7 +296,7 @@ async function retryFailedDownloads(
   let recovered = 0;
 
   for (const { record } of failed) {
-    const result = await downloadPdf(client, session, config.site, record);
+    const result = await downloadPdf(client, session, config.site, record, config.delayMultiplier);
     if (result.success) {
       recovered++;
     } else {

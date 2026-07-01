@@ -30,10 +30,11 @@ export async function executeSearch(
   client: AxiosInstance,
   session: JsfSession,
   site: SiteConfig,
-  filters: SearchFilters = {}
+  filters: SearchFilters = {},
+  delayMultiplier = 1.0
 ): Promise<SearchResult | null> {
   const xml = await withRetry(async () => {
-    await randomDelay();
+    await randomDelay(delayMultiplier);
     const response = await client.post(
       buildPathWithSession(site.path, session.jsessionId),
       buildSearchPayload(session.viewState, filters),
@@ -65,10 +66,11 @@ export async function navigateToPage(
   pageNumber: number,
   totalPages: number,
   totalRecords: number,
-  filters: SearchFilters = {}
+  filters: SearchFilters = {},
+  delayMultiplier = 1.0
 ): Promise<SearchResult | null> {
   const xml = await withRetry(async () => {
-    await randomDelay();
+    await randomDelay(delayMultiplier);
     const response = await client.post(
       buildPathWithSession(site.path, session.jsessionId),
       buildPaginationPayload(session.viewState, filters, pageNumber),

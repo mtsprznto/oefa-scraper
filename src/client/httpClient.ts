@@ -29,11 +29,13 @@ export function createHttpClient(): AxiosInstance {
   return client;
 }
 
-export async function randomDelay(): Promise<void> {
-  const ms =
+// multiplier escala el delay base — usar >1.0 con múltiples workers para respetar rate limit.
+// Regla práctica: 1 worker=1.0, 2 workers=1.5, 3 workers=2.0, 4+ workers=2.5+
+export async function randomDelay(multiplier = 1.0): Promise<void> {
+  const base =
     env.delayMinMs +
     Math.floor(Math.random() * (env.delayMaxMs - env.delayMinMs));
-  await sleep(ms);
+  await sleep(Math.round(base * multiplier));
 }
 
 // Reintentos con backoff exponencial + jitter (±25%) para evitar thundering herd.

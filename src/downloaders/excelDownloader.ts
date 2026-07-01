@@ -22,7 +22,8 @@ export async function downloadExcel(
   client: AxiosInstance,
   session: JsfSession,
   site: SiteConfig,
-  filename = "RESOLUCIONES_APELACION.xls"
+  filename = "RESOLUCIONES_APELACION.xls",
+  delayMultiplier = 1.0
 ): Promise<ExcelDownloadResult> {
   const filePath = path.join(env.excelDir, filename);
 
@@ -31,7 +32,7 @@ export async function downloadExcel(
     return { success: true, filePath, error: null };
   }
 
-  await randomDelay();
+  await randomDelay(delayMultiplier);
 
   const result = await withRetry(async () => {
     const response = await client.post(

@@ -26,7 +26,8 @@ export async function downloadPdf(
   client: AxiosInstance,
   session: JsfSession,
   site: SiteConfig,
-  record: DocumentRecord
+  record: DocumentRecord,
+  delayMultiplier = 1.0
 ): Promise<DownloadResult> {
   if (record.pdfParamUuid === null || record.pdfRowIndex === null) {
     return { record, success: false, filePath: null, error: "Sin params de descarga PDF" };
@@ -40,7 +41,7 @@ export async function downloadPdf(
     return { record, success: true, filePath, error: null };
   }
 
-  await randomDelay();
+  await randomDelay(delayMultiplier);
 
   const result = await withRetry(async () => {
     const response = await client.post(
