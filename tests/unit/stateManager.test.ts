@@ -249,3 +249,40 @@ describe("ensureDataDir()", () => {
     expect(() => ensureDataDir()).not.toThrow(); // segunda llamada
   });
 });
+
+// ─── getSessionDir ────────────────────────────────────────────────────────────
+
+describe("getSessionDir()", () => {
+  it("sin sessionId retorna dataDir base", async () => {
+    const { getSessionDir } = await import("../../src/storage/stateManager");
+    const dir = getSessionDir(undefined);
+    expect(dir).toBe(path.resolve(tmpDir));
+  });
+
+  it("con sessionId retorna data/sessions/{id}", async () => {
+    const { getSessionDir } = await import("../../src/storage/stateManager");
+    const dir = getSessionDir("instancia-a");
+    expect(dir).toBe(path.join(path.resolve(tmpDir), "sessions", "instancia-a"));
+  });
+
+  it("saveProgress con sessionId escribe en subdirectorio aislado", async () => {
+    const { saveProgress, loadProgress } = await import("../../src/storage/stateManager");
+    const progress = {
+      site: "tfa",
+      lastCompletedPage: 3,
+      totalPages: 10,
+      totalRecords: 100,
+      startedAt: "2026-07-01T00:00:00.000Z",
+      updatedAt: "2026-07-01T00:00:00.000Z",
+    };
+
+    saveProgress(progress, "session-x");
+
+    // Aislamiento: la sesión x no es visible sin sessionId
+    expect(loadProgress("tfa")).toBeNull();
+    // Y sí es visible con el sessionId correcto
+    const loaded = loadProgress("tfa", "session-x");
+    expect(loaded).not.toBeNull();
+    expect(loaded!.lastCompletedPage).toBe(3);
+  });
+});

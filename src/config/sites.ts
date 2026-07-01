@@ -26,8 +26,10 @@ export type SiteKey = keyof typeof SITES;
 // Agrupa los flags de ejecución junto al sitio para evitar prop-drilling.
 export interface ScraperConfig {
   readonly site: SiteConfig;
-  readonly maxPages: number | null; // null = sin límite
+  readonly maxPages: number | null;  // null = sin límite
   readonly skipPdfs: boolean;
+  readonly sessionId?: string;       // aísla logs y checkpoint en data/sessions/{sessionId}/
+  readonly startPage?: number;       // fuerza inicio desde página N (override del checkpoint)
 }
 
 export function resolveSite(key: string): SiteConfig {

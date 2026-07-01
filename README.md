@@ -63,6 +63,34 @@ pnpm test
 | `--site=tfa\|dfsai` | Sitio objetivo (default: `dfsai`) | `pnpm start --site=tfa` |
 | `--pages=N` | Limitar a N páginas — demo/prueba | `pnpm start --site=tfa --pages=5` |
 | `--skip-pdfs` | Solo extraer metadata, no descargar PDFs | `pnpm start --site=tfa --skip-pdfs` |
+| `--session=name` | Aísla logs y checkpoint en `data/sessions/{name}/` | `pnpm start --session=instancia-a` |
+| `--start-page=N` | Fuerza inicio desde la página N (override del checkpoint) | `pnpm start --session=instancia-a --start-page=50` |
+
+### Multi-instancia
+
+Dos procesos en paralelo sobre rangos distintos de páginas:
+
+```bash
+# Terminal 1: páginas 1–88
+pnpm start --site=tfa --session=worker-1 --pages=88
+
+# Terminal 2: páginas 89–176 (requiere un checkpoint previo en esa sesión)
+pnpm start --site=tfa --session=worker-2 --start-page=89
+```
+
+Cada sesión escribe en su propio directorio aislado:
+```
+data/
+  sessions/
+    worker-1/
+      progress.json
+      records.json
+      scraper.log
+    worker-2/
+      progress.json
+      records.json
+      scraper.log
+```
 
 ## Sample output
 
