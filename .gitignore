@@ -1,0 +1,9 @@
+node_modules/
+dist/
+downloads/
+data/
+tmp/
+*.pdf
+.env
+.claude/
+tests/integration/_rewrite.flag
