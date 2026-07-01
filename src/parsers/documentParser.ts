@@ -65,8 +65,11 @@ export function parsePaginationResponse(
 
 // Extrae las filas de datos del HTML del datatable.
 // data-ri contiene el índice global del registro — usado en el POST de descarga PDF.
+// El CDATA de paginación llega sin <table>/<tbody> wrapper — cheerio descarta <tr>
+// huérfanos por defecto, por eso se envuelve antes de parsear.
 function parseRows(html: string, _site: SiteConfig): DocumentRecord[] {
-  const $ = cheerio.load(html);
+  const wrapped = html.trimStart().startsWith("<tr") ? `<table><tbody>${html}</tbody></table>` : html;
+  const $ = cheerio.load(wrapped);
   const records: DocumentRecord[] = [];
 
   $("tr[data-ri]").each((_, tr) => {
