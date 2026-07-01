@@ -43,6 +43,13 @@ export async function executeSearch(
 
   if (!xml) return null;
 
+  // Detectar HTTP 200 con body inesperado (captcha, error page, anti-bot).
+  // partial-response válida de JSF siempre contiene el updateId del form.
+  if (!xml.includes("listarDetalleInfraccionRAAForm")) {
+    console.error("[ERROR] executeSearch — respuesta no es partial-response JSF válida. Posible bloqueo o captcha.");
+    return null;
+  }
+
   const page = parseSearchResponse(xml, site);
   const updatedSession = updateViewState(session, xml);
   return { page, session: updatedSession };
@@ -73,6 +80,17 @@ export async function navigateToPage(
 
   const page = parsePaginationResponse(xml, site, pageNumber, totalPages, totalRecords);
   const updatedSession = updateViewState(session, xml);
+
+  // 0 registros en una página que debería tener datos = ViewState expirado o respuesta inesperada.
+  // Se retorna igualmente — el caller (index.ts) detecta el vacío y re-inicializa sesión.
+  // Loguear aquí para trazabilidad: distingue expiración de sesión vs error de red (que retorna null).
+  if (page.records.length === 0) {
+    console.warn(
+      `[WARN] navigateToPage(${pageNumber}) — respuesta vacía (0 registros). ` +
+      `Posible ViewState expirado o respuesta inesperada del servidor.`
+    );
+  }
+
   return { page, session: updatedSession };
 }
 

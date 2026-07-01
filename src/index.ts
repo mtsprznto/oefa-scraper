@@ -84,10 +84,7 @@ async function runFreshScraper(
   const searchResult = await executeSearch(client, session, site, FILTERS);
 
   if (!searchResult) {
-    console.error("[ERROR] Búsqueda fallida.");
-    if (siteKey === "tfa") {
-      console.error("        TFA requiere IP peruana. Usar --site=dfsai para demo sin VPN.");
-    }
+    console.error(`[ERROR] Búsqueda fallida en ${site.label}.`);
     process.exit(1);
   }
 
@@ -95,11 +92,8 @@ async function runFreshScraper(
   const { page: firstPage } = searchResult;
 
   if (firstPage.totalRecords === 0) {
-    console.warn("[WARN] 0 registros encontrados.");
-    if (siteKey === "tfa") {
-      console.warn("       TFA aplica geo-filtro silencioso fuera de Perú (HTTP 200, 0 resultados).");
-      console.warn("       Usar --site=dfsai para demo funcional sin VPN.");
-    }
+    console.warn(`[WARN] 0 registros encontrados en ${site.label}.`);
+    console.warn("       Verificar conectividad y acceso al sitio desde esta IP.");
     process.exit(0);
   }
 
@@ -153,6 +147,11 @@ async function runScraper(
     process.exit(1);
   }
   session = searchResult.session;
+
+  // Excel: idempotente (excelDownloader skipea si ya existe en disco)
+  if (!skipPdfs) {
+    await downloadExcel(client, session, site);
+  }
 
   // maxPages limita el total de páginas procesadas en esta ejecución
   const lastPage = maxPages !== null

@@ -15,7 +15,7 @@ export const SITES = {
   tfa: {
     key: "tfa",
     path: "/repdig/consulta/consultaTfa.xhtml",
-    label: "Resoluciones TFA (requiere IP peruana)",
+    label: "Resoluciones TFA — OEFA",
     col6Label: "Nro. Resolución de Apelación",
   },
 } as const satisfies Record<string, SiteConfig>;

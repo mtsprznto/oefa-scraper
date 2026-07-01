@@ -190,4 +190,42 @@ describe("navigateToPage()", () => {
     );
     expect(result).toBeNull();
   });
+
+  it("0 registros — retorna page vacía (no null) para que caller re-inicialice sesión", async () => {
+    const { navigateToPage } = await import("../../src/scrapers/searchScraper");
+    const emptyXml = `<?xml version='1.0' encoding='UTF-8'?>
+<partial-response id="j_id1"><changes>
+  <update id="listarDetalleInfraccionRAAForm:dt"><![CDATA[]]></update>
+  <update id="j_id1:javax.faces.ViewState:0"><![CDATA[new-vs]]></update>
+</changes></partial-response>`;
+
+    const mockClient = {
+      post: vi.fn().mockResolvedValue({ data: emptyXml }),
+    };
+
+    const result = await navigateToPage(mockClient as never, SESSION_BASE, SITES.tfa, 5, 176, 1753);
+
+    // No retorna null — retorna page vacía para que index.ts detecte y re-inicialice
+    expect(result).not.toBeNull();
+    expect(result!.page.records).toHaveLength(0);
+  });
+});
+
+// ─── Guards de respuesta inesperada ──────────────────────────────────────────
+
+describe("Guards: respuesta inesperada del servidor", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("executeSearch retorna null si respuesta no contiene el form JSF (captcha/error page)", async () => {
+    const { executeSearch } = await import("../../src/scrapers/searchScraper");
+    // Simula respuesta HTML de captcha o error — no contiene el form ID
+    const mockClient = {
+      post: vi.fn().mockResolvedValue({ data: "<html><body>Acceso denegado</body></html>" }),
+    };
+
+    const result = await executeSearch(mockClient as never, SESSION_BASE, SITES.tfa);
+    expect(result).toBeNull();
+  });
 });

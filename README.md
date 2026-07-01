@@ -8,10 +8,10 @@ El desafío propone dos targets:
 
 | Site | URL | Acceso |
 |------|-----|--------|
-| **Poder Judicial Perú** (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | 403 sin IP peruana |
-| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Sin VPN |
+| **Poder Judicial Perú** (principal) | `jurisprudencia.pj.gob.pe/...resultado.xhtml` | HTTP 403 fuera de Perú |
+| **OEFA TFA** (alternativo oficial) | `publico.oefa.gob.pe/repdig/consulta/consultaTfa.xhtml` | ✅ Accesible sin VPN |
 
-El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`) dado que el target principal devuelve HTTP 403 desde IPs fuera de Perú — no hay forma de explorar su estructura ni verificar el scraper sin acceso de red. Ambos sitios usan JSF/PrimeFaces con estructura idéntica; adaptar al PJ requiere solo cambiar la URL y los form IDs en `src/config/sites.ts`.
+El scraper implementa el **sitio alternativo oficial** (`consultaTfa.xhtml`): mismo stack JSF/PrimeFaces, misma estructura de paginación y descarga. El target principal devuelve HTTP 403 desde IPs fuera de Perú, lo que impide explorar su estructura o verificar el scraper sin acceso físico de red. Adaptar al PJ requiere cambiar la URL y form IDs en `src/config/sites.ts`.
 
 ## Requisitos
 
